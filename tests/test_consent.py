@@ -53,6 +53,11 @@ def test_privacy_keeps_all_details() -> None:
         assert fragment in texts.PRIVACY, f"В PRIVACY потерялось: {fragment!r}"
 
 
+def test_privacy_gives_a_reachable_contact() -> None:
+    """Отправлять с вопросами в никуда нельзя - нужен живой аккаунт."""
+    assert "@aixors" in texts.PRIVACY
+
+
 def test_no_long_dashes_on_first_screens() -> None:
     assert "—" not in texts.CONSENT
     assert "—" not in texts.PRIVACY
