@@ -19,17 +19,9 @@ router = Router(name="start")
 
 
 async def open_diagnostic(
-    message: Message,
-    state: FSMContext,
-    db: Database,
-    config: Config,
-    greet: bool = False,
+    message: Message, state: FSMContext, db: Database, config: Config
 ) -> None:
-    """Пускает в тест или показывает пейволл.
-
-    greet=True - человек пришел без экрана согласия (дал его раньше),
-    значит поздороваться надо здесь, иначе диалог начнется с полуслова.
-    """
+    """Пускает в тест или показывает пейволл."""
     allowed, _is_free = await db.can_start(message.chat.id)
     if not allowed:
         await state.clear()
@@ -39,7 +31,7 @@ async def open_diagnostic(
         )
         return
     await state.set_state(Diag.niche)
-    await message.answer(texts.GREETING_RETURNING if greet else texts.GREETING)
+    await message.answer(texts.GREETING)
 
 
 @router.message(CommandStart())
@@ -53,10 +45,10 @@ async def cmd_start(
         user.id, user.username or "", user.full_name or ""
     )
     await state.clear()
-    if await db.has_consent(user.id):
-        # Экран согласия он уже проходил, поэтому здороваемся тут.
-        await open_diagnostic(message, state, db, config, greet=True)
-        return
+    # Экран с кнопками показываем всегда, даже если согласие уже есть.
+    # Один и тот же старт при каждом /start: человек видит приветствие
+    # и понимает, куда жать. Повторное согласие ничего не ломает -
+    # set_consent не перезаписывает дату.
     await state.set_state(Diag.consent)
     await message.answer(texts.CONSENT, reply_markup=kb.consent_kb())
 

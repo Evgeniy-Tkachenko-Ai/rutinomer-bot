@@ -87,17 +87,15 @@ def test_greeting_keeps_price_and_first_question() -> None:
     assert "Напиши про свой бизнес" in texts.GREETING
 
 
-def test_returning_user_gets_greeted() -> None:
-    """Вернувшийся не видит экран согласия - значит здороваемся здесь.
-    Именно этого теста не хватало, и бот встречал таких людей молча."""
-    assert texts.HELLO in texts.GREETING_RETURNING
-    assert texts.INTRO in texts.GREETING_RETURNING
+def test_start_screen_always_has_buttons() -> None:
+    """Стартовый экран один и тот же всегда, и на нем есть кнопки."""
+    labels = [b.text for row in kb.consent_kb().inline_keyboard for b in row]
+    assert labels == ["Поехали", "Что за данные?"]
 
 
-def test_both_starts_ask_the_first_question() -> None:
-    for text in (texts.GREETING, texts.GREETING_RETURNING):
-        assert "Напиши про свой бизнес" in text
-        assert "3$" in text
+def test_greeting_asks_the_first_question() -> None:
+    assert "Напиши про свой бизнес" in texts.GREETING
+    assert "3$" in texts.GREETING
 
 
 def test_consent_and_returning_start_share_the_wording() -> None:
