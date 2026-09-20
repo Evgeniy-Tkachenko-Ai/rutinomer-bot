@@ -23,6 +23,11 @@ _DASHES = {"—": "-", "–": "-", "−": "-", "‒": "-"}
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
+# Глубина размышления. low = дешевле и быстрее; для этой задачи (собрать
+# 4-6 вопросов и написать короткий разбор) высокая глубина не нужна.
+# Поднять до "medium"/"high", если вопросы станут общими.
+EFFORT = "low"
+
 
 def strip_dashes(text: str) -> str:
     for bad, good in _DASHES.items():
@@ -170,6 +175,7 @@ class Claude:
             max_tokens=max_tokens,
             system=SYSTEM_PROMPT,
             thinking={"type": "adaptive"},
+            output_config={"effort": EFFORT},
             messages=[{"role": "user", "content": task}],
         )
         if response.stop_reason == "refusal":
@@ -185,7 +191,10 @@ class Claude:
             system=SYSTEM_PROMPT,
             thinking={"type": "adaptive"},
             messages=[{"role": "user", "content": task}],
-            output_config={"format": {"type": "json_schema", "schema": QUIZ_SCHEMA}},
+            output_config={
+                "effort": EFFORT,
+                "format": {"type": "json_schema", "schema": QUIZ_SCHEMA},
+            },
         )
         if response.stop_reason == "refusal":
             raise RuntimeError("Модель отказалась генерировать тест")

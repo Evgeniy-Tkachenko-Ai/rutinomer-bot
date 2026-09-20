@@ -47,7 +47,8 @@ class Config:
             bot_token=_req("BOT_TOKEN"),
             anthropic_api_key=_req("ANTHROPIC_API_KEY"),
             admin_chat_id=_int("ADMIN_CHAT_ID", 0),
-            model=os.getenv("CLAUDE_MODEL", "claude-opus-5").strip() or "claude-opus-5",
+            model=os.getenv("CLAUDE_MODEL", "claude-sonnet-5").strip()
+            or "claude-sonnet-5",
             price_stars=_int("PRICE_STARS", 188),
             db_path=os.getenv("DB_PATH", "data/bot.db").strip() or "data/bot.db",
             site_url=os.getenv("SITE_URL", "https://tkachenko-ai.com").strip(),
