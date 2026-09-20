@@ -61,3 +61,27 @@ def test_privacy_gives_a_reachable_contact() -> None:
 def test_no_long_dashes_on_first_screens() -> None:
     assert "—" not in texts.CONSENT
     assert "—" not in texts.PRIVACY
+
+
+def test_privacy_screen_has_only_go_button() -> None:
+    """На экране подробностей не предлагаем те же подробности снова."""
+    labels = [b.text for row in kb.privacy_kb().inline_keyboard for b in row]
+    assert labels == ["Поехали"], labels
+
+
+def test_greeting_does_not_greet_again() -> None:
+    """Здороваемся один раз - на экране согласия. Повтор выглядит как сбой."""
+    assert "приветствую" not in texts.GREETING.lower()
+    assert "Категорически" not in texts.GREETING
+
+
+def test_greeting_does_not_repeat_the_pitch() -> None:
+    """Про 5 минут и потерю времени сказано на первом экране."""
+    assert "теряет время и деньги" not in texts.GREETING
+
+
+def test_greeting_keeps_price_and_first_question() -> None:
+    """Но то, чего на первом экране не было, обязано остаться."""
+    assert "3$" in texts.GREETING
+    assert "звездах Telegram" in texts.GREETING
+    assert "Напиши про свой бизнес" in texts.GREETING

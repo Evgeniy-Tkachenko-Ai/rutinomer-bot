@@ -1,6 +1,8 @@
 """Шаг 0: согласие, старт, развилка бесплатно/платно."""
 from __future__ import annotations
 
+import logging
+
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
@@ -12,6 +14,7 @@ from ..config import Config
 from ..db import Database
 from ..states import Diag
 
+log = logging.getLogger(__name__)
 router = Router(name="start")
 
 
@@ -51,9 +54,20 @@ async def cmd_start(
 
 @router.callback_query(F.data == kb.CB_PRIVACY)
 async def show_privacy(call: CallbackQuery) -> None:
+    """Подменяем то же сообщение, а не шлем второе.
+
+    Иначе в чате висят два одинаковых блока кнопок, и непонятно, какой
+    из них рабочий.
+    """
     await call.answer()
-    if call.message:
-        await call.message.answer(texts.PRIVACY, reply_markup=kb.consent_kb())
+    if call.message is None:
+        return
+    try:
+        await call.message.edit_text(texts.PRIVACY, reply_markup=kb.privacy_kb())
+    except Exception:
+        # Сообщение слишком старое или уже удалено - тогда просто пришлем новое.
+        log.debug("Не смог подменить экран согласия", exc_info=True)
+        await call.message.answer(texts.PRIVACY, reply_markup=kb.privacy_kb())
 
 
 @router.callback_query(F.data == kb.CB_CONSENT)

@@ -24,6 +24,15 @@ def consent_kb() -> InlineKeyboardMarkup:
     )
 
 
+def privacy_kb() -> InlineKeyboardMarkup:
+    """Экран подробностей. Кнопка одна: вторую подробности уже показали."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Поехали", callback_data=CB_CONSENT)]
+        ]
+    )
+
+
 def pain_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
