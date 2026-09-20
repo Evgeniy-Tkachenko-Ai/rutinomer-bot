@@ -7,7 +7,7 @@ from __future__ import annotations
 from bot import keyboards as kb
 from bot import texts
 
-MAX_CONSENT_LEN = 200
+MAX_CONSENT_LEN = 300
 
 
 def _labels() -> list[str]:
@@ -32,6 +32,13 @@ def test_consent_mentions_both_buttons_exactly() -> None:
 
 def test_consent_says_it_is_consent() -> None:
     assert "согласие на обработку данных" in texts.CONSENT
+
+
+def test_consent_introduces_the_bot() -> None:
+    """Человек должен понять, кто с ним говорит и зачем."""
+    assert "Рутинометр" in texts.CONSENT
+    assert "Евгения Ткаченко" in texts.CONSENT
+    assert "5 минут" in texts.CONSENT
 
 
 def test_consent_has_no_details() -> None:
