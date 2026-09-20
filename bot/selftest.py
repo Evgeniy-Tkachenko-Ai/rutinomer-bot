@@ -42,7 +42,13 @@ async def run() -> int:
 
         print("Генерирую результат...\n")
         print(await claude.generate_result(NICHE, "", answers, score, max_score, score10))
-        print("\nВсе работает. Можно запускать бота: python -m bot")
+        print(
+            "\nВсе работает. Можно запускать бота: python -m bot\n\n"
+            "Учти: выше проверены только два вызова модели - тест и результат.\n"
+            "Шаг 5 (оффер) в selftest не входит: это статичный текст и две\n"
+            "кнопки, их отправляет сам бот сразу после результата. В чате ты\n"
+            "увидишь 'Заказать расчет' и 'Бесплатная консультация'."
+        )
         return 0
     except anthropic.AuthenticationError:
         print("\nКлюч не принят. Проверь ANTHROPIC_API_KEY в .env", file=sys.stderr)
