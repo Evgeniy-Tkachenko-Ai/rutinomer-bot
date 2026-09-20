@@ -36,7 +36,7 @@ def test_consent_says_it_is_consent() -> None:
 
 def test_consent_introduces_the_bot() -> None:
     """Человек должен понять, кто с ним говорит и зачем."""
-    assert "Рутинометр" in texts.CONSENT
+    assert "Рутиномер" in texts.CONSENT
     assert "Евгения Ткаченко" in texts.CONSENT
     assert "5 минут" in texts.CONSENT
 
