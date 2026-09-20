@@ -31,7 +31,9 @@ def strip_dashes(text: str) -> str:
 
 
 class Option(BaseModel):
-    text: str = Field(max_length=120)
+    # Без max_length: длинный текст обрезает normalize_quiz, а не роняет
+    # разбор ответа целиком.
+    text: str
     score: int
 
     @field_validator("score")
@@ -43,12 +45,94 @@ class Option(BaseModel):
 
 
 class Question(BaseModel):
-    q: str = Field(max_length=300)
-    options: list[Option] = Field(min_length=2, max_length=4)
+    q: str
+    options: list[Option]
 
 
 class Quiz(BaseModel):
-    questions: list[Question] = Field(min_length=4, max_length=6)
+    questions: list[Question]
+
+
+# Границы теста. В JSON-схему их положить нельзя (см. QUIZ_SCHEMA),
+# поэтому они живут здесь и проверяются после ответа модели.
+MIN_QUESTIONS = 3
+GOOD_QUESTIONS = 4
+MAX_QUESTIONS = 6
+MIN_OPTIONS = 2
+MAX_OPTIONS = 4
+MAX_Q_LEN = 300
+MAX_OPTION_LEN = 100   # больше в кнопку Telegram все равно не влезет
+
+
+# Anthropic API принимает не весь JSON Schema. Запрещены, среди прочего,
+# maxItems, minLength/maxLength, pattern, minimum/maximum, а minItems
+# допускает только 0 или 1. Поэтому количество вопросов и вариантов
+# схемой не ограничиваем - просим словами в промпте и проверяем кодом
+# в normalize_quiz. Список поддерживаемого:
+# https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+QUIZ_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "text": {"type": "string"},
+                                "score": {"type": "integer", "enum": [0, 1, 2]},
+                            },
+                            "required": ["text", "score"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["q", "options"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["questions"],
+    "additionalProperties": False,
+}
+
+
+def normalize_quiz(quiz: Quiz) -> Quiz:
+    """Приводит ответ модели к тому, что бот умеет показать.
+
+    Схема количества не гарантирует, так что чиним здесь: чистим тире,
+    обрезаем длинные строки, выкидываем вопросы без выбора, режем хвост
+    сверх максимума. Падаем только если вопросов совсем мало.
+    """
+    good: list[Question] = []
+    for question in quiz.questions:
+        options = []
+        seen: set[str] = set()
+        for option in question.options:
+            text = strip_dashes(option.text).strip()[:MAX_OPTION_LEN]
+            if not text or text.lower() in seen:
+                continue
+            seen.add(text.lower())
+            options.append(Option(text=text, score=option.score))
+        text_q = strip_dashes(question.q).strip()[:MAX_Q_LEN]
+        if not text_q or len(options) < MIN_OPTIONS:
+            log.warning("Выкидываю негодный вопрос: %r", question.q[:60])
+            continue
+        good.append(Question(q=text_q, options=options[:MAX_OPTIONS]))
+
+    if len(good) < MIN_QUESTIONS:
+        raise ValueError(
+            f"Модель вернула годных вопросов: {len(good)}, "
+            f"нужно минимум {MIN_QUESTIONS}"
+        )
+    if len(good) < GOOD_QUESTIONS:
+        log.warning("Вопросов меньше желаемых %s: %s", GOOD_QUESTIONS, len(good))
+    return Quiz(questions=good[:MAX_QUESTIONS])
 
 
 def score_to_ten(score: int, max_score: int) -> int:
@@ -101,58 +185,12 @@ class Claude:
             system=SYSTEM_PROMPT,
             thinking={"type": "adaptive"},
             messages=[{"role": "user", "content": task}],
-            output_config={
-                "format": {
-                    "type": "json_schema",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "questions": {
-                                "type": "array",
-                                "minItems": 4,
-                                "maxItems": 6,
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "q": {"type": "string"},
-                                        "options": {
-                                            "type": "array",
-                                            "minItems": 2,
-                                            "maxItems": 4,
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "text": {"type": "string"},
-                                                    "score": {
-                                                        "type": "integer",
-                                                        "enum": [0, 1, 2],
-                                                    },
-                                                },
-                                                "required": ["text", "score"],
-                                                "additionalProperties": False,
-                                            },
-                                        },
-                                    },
-                                    "required": ["q", "options"],
-                                    "additionalProperties": False,
-                                },
-                            }
-                        },
-                        "required": ["questions"],
-                        "additionalProperties": False,
-                    },
-                }
-            },
+            output_config={"format": {"type": "json_schema", "schema": QUIZ_SCHEMA}},
         )
         if response.stop_reason == "refusal":
             raise RuntimeError("Модель отказалась генерировать тест")
         raw = next(b.text for b in response.content if b.type == "text")
-        quiz = Quiz.model_validate(json.loads(raw))
-        for question in quiz.questions:
-            question.q = strip_dashes(question.q)
-            for option in question.options:
-                option.text = strip_dashes(option.text)
-        return quiz
+        return normalize_quiz(Quiz.model_validate(json.loads(raw)))
 
     async def generate_result(
         self,

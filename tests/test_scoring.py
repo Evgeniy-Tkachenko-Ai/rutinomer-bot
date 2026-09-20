@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from bot.llm import Quiz, score_to_ten, strip_dashes
+from bot.llm import Quiz, normalize_quiz, score_to_ten, strip_dashes
 
 
 @pytest.mark.parametrize(
@@ -33,11 +33,14 @@ def test_strip_dashes() -> None:
     assert strip_dashes("это — тест – да −") == "это - тест - да -"
 
 
-def test_quiz_rejects_too_few_questions() -> None:
-    with pytest.raises(Exception):
-        Quiz.model_validate(
-            {"questions": [{"q": "a", "options": [{"text": "x", "score": 0}]}]}
-        )
+def test_too_few_questions_rejected_in_code() -> None:
+    """Раньше количество ограничивала JSON-схема, но API такое не принимает.
+    Теперь это проверяет normalize_quiz - гарантия та же, место другое."""
+    quiz = Quiz.model_validate(
+        {"questions": [{"q": "a", "options": [{"text": "x", "score": 0}]}]}
+    )
+    with pytest.raises(ValueError):
+        normalize_quiz(quiz)
 
 
 def test_quiz_rejects_bad_score() -> None:

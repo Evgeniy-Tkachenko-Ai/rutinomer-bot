@@ -6,8 +6,9 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
+
+import anthropic
 
 from .config import Config
 from .llm import Claude, score_to_ten
@@ -43,12 +44,24 @@ async def run() -> int:
         print(await claude.generate_result(NICHE, "", answers, score, max_score, score10))
         print("\nВсе работает. Можно запускать бота: python -m bot")
         return 0
+    except anthropic.AuthenticationError:
+        print("\nКлюч не принят. Проверь ANTHROPIC_API_KEY в .env", file=sys.stderr)
+        return 1
+    except anthropic.BadRequestError as exc:
+        print(f"\nAPI отклонил запрос: {exc}", file=sys.stderr)
+        if "output_config" in str(exc) or "schema" in str(exc):
+            print(
+                "Похоже на JSON-схему в QUIZ_SCHEMA (bot/llm.py). API принимает\n"
+                "не весь JSON Schema: maxItems и minLength/maxLength/pattern\n"
+                "запрещены, minItems - только 0 или 1. Количество вопросов\n"
+                "ограничивай в normalize_quiz, а не в схеме. Тест на это:\n"
+                "python -m pytest tests/test_schema.py",
+                file=sys.stderr,
+            )
+        return 1
     except Exception as exc:
         print(f"\nНе получилось: {type(exc).__name__}: {exc}", file=sys.stderr)
-        print(
-            "Проверь ANTHROPIC_API_KEY и что на аккаунте есть баланс.",
-            file=sys.stderr,
-        )
+        print("Проверь ANTHROPIC_API_KEY и баланс на аккаунте.", file=sys.stderr)
         return 1
     finally:
         try:
