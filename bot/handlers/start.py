@@ -19,9 +19,17 @@ router = Router(name="start")
 
 
 async def open_diagnostic(
-    message: Message, state: FSMContext, db: Database, config: Config
+    message: Message,
+    state: FSMContext,
+    db: Database,
+    config: Config,
+    greet: bool = False,
 ) -> None:
-    """Пускает в тест или показывает пейволл."""
+    """Пускает в тест или показывает пейволл.
+
+    greet=True - человек пришел без экрана согласия (дал его раньше),
+    значит поздороваться надо здесь, иначе диалог начнется с полуслова.
+    """
     allowed, _is_free = await db.can_start(message.chat.id)
     if not allowed:
         await state.clear()
@@ -31,7 +39,7 @@ async def open_diagnostic(
         )
         return
     await state.set_state(Diag.niche)
-    await message.answer(texts.GREETING)
+    await message.answer(texts.GREETING_RETURNING if greet else texts.GREETING)
 
 
 @router.message(CommandStart())
@@ -46,7 +54,8 @@ async def cmd_start(
     )
     await state.clear()
     if await db.has_consent(user.id):
-        await open_diagnostic(message, state, db, config)
+        # Экран согласия он уже проходил, поэтому здороваемся тут.
+        await open_diagnostic(message, state, db, config, greet=True)
         return
     await state.set_state(Diag.consent)
     await message.answer(texts.CONSENT, reply_markup=kb.consent_kb())

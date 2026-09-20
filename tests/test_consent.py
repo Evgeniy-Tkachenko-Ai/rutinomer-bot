@@ -85,3 +85,22 @@ def test_greeting_keeps_price_and_first_question() -> None:
     assert "3$" in texts.GREETING
     assert "звездах Telegram" in texts.GREETING
     assert "Напиши про свой бизнес" in texts.GREETING
+
+
+def test_returning_user_gets_greeted() -> None:
+    """Вернувшийся не видит экран согласия - значит здороваемся здесь.
+    Именно этого теста не хватало, и бот встречал таких людей молча."""
+    assert texts.HELLO in texts.GREETING_RETURNING
+    assert texts.INTRO in texts.GREETING_RETURNING
+
+
+def test_both_starts_ask_the_first_question() -> None:
+    for text in (texts.GREETING, texts.GREETING_RETURNING):
+        assert "Напиши про свой бизнес" in text
+        assert "3$" in text
+
+
+def test_consent_and_returning_start_share_the_wording() -> None:
+    """Приветствие и представление не должны разъехаться между экранами."""
+    assert texts.HELLO in texts.CONSENT
+    assert texts.INTRO in texts.CONSENT
